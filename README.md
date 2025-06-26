@@ -76,5 +76,5 @@ El conjunto de datos contiene las siguientes columnas:
 ## Tecnología a utilizar
 Este proyecto hace uso de tecnologías de Big Data como Apache Spark para procesar grandes volúmenes de datos, permitiendo análisis rápidos y eficientes en un conjunto de datos tan amplio.
 
-![ApacheSpark](image-1.png)
+![ApacheSpark](/readme_assets/spark.png)
 
