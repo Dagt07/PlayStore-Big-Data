@@ -24,19 +24,15 @@ if __name__ == "__main__":
 
     spark = SparkSession.builder.appName("PaidAppsRatings").getOrCreate()
 
-    input = spark.read.text(filein).rdd.map(lambda r: r[0])
-    # to dump an RDD like input to the pyspark shell, use
-    #   input.collect()
-    # make sure not to do this for a large RDD
-
-    lines = input.map(lambda line: line.split(","))
+    df = spark.read.options(delimiter=",", header=True).csv(filein)
 
     # Here we filter the lines to only include those that have a valid App Name and Rating and are marked as not free
-    paidApps = lines.filter(lambda line: not (line[0] == 'null') and not (line[3] == 'null') and not line[8])
+    paidApps = df.filter((df.App_Name != 'null') & (df.Rating != 'null') & (df.Free == "False"))
 
-    # We create a new RDD where each element is a tuple of (App Name, Rating, Rating Count, Free)
-    PaidAppsRating = paidApps.map(lambda line: (line[0], line[3], line[4], line[8]))
+    # We create a new Dataframe where each element is a tuple of (App Name, Rating, Rating Count, Free)
 
-    PaidAppsRating.saveAsTextFile(fileout)
+    PaidAppsRating = paidApps.select(paidApps.App_Name, paidApps.Rating, paidApps.Rating_Count, paidApps.Free)
+
+    PaidAppsRating.write.option("header", True).option("delimiter", ",").csv(fileout)
 
     spark.stop()
