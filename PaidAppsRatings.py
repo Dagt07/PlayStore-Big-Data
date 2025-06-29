@@ -36,6 +36,8 @@ if __name__ == "__main__":
 
     TopAppsCategory = topApps.select(topApps.App_Name, topApps.Category, topApps.Installs)
 
+    TopAppsCategory = TopAppsCategory.groupBy(TopAppsCategory.Category).agg(sum(TopAppsCategory.Installs).alias("Total_Installs")).orderBy(col("Total_Installs").desc())
+
     TopAppsCategory.write.option("header", True).option("delimiter", ",").csv(fileout_1)
 
     # ¿Qué tipo de aplicaciones de pago obtienen más descargas?
@@ -44,12 +46,20 @@ if __name__ == "__main__":
 
     TopPaidAppsCategory = paidApps.select(paidApps.App_Name, paidApps.Category, paidApps.Installs)
 
+    TopPaidAppsCategory = TopPaidAppsCategory.groupBy(TopPaidAppsCategory.Category).agg(sum(TopPaidAppsCategory.Installs).alias("Total_Installs")).orderBy(col("Total_Installs").desc())
+
     TopPaidAppsCategory.write.option("header", True).option("delimiter", ",").csv(fileout_2)
 
     # ¿Qué correlación existe entre las calificaciones de las aplicaciones de pago y su cantidad de descargas?
 
     PaidAppsRating = paidApps.select(paidApps.App_Name, paidApps.Rating, paidApps.Rating_Count, paidApps.Installs)
 
+    Correlation = PaidAppsRating.stat.corr(PaidAppsRating.Rating, PaidAppsRating.Installs)
+
     PaidAppsRating.write.option("header", True).option("delimiter", ",").csv(fileout_3)
+
+    fileout_corr = f"{fileout_3}/corr"
+
+    Correlation.write.option("header", True).csv(fileout_corr)
 
     spark.stop()
