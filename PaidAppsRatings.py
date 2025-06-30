@@ -62,5 +62,31 @@ if __name__ == "__main__":
     fileout_3 = f"{fileout}/results_3"
 
     PaidAppsRating.write.option("header", True).option("delimiter", ",").csv(fileout_3)
+
+    # Promedio de Rating para distintos rangos
+    InstallGroups = df.withColumn(
+        "InstallGroup",
+        when(col("Installs") < 100, "<100")
+        .when((col("Installs") >= 100) & (col("Installs") < 1000), "100-999")
+        .when((col("Installs") >= 1000) & (col("Installs") < 10000), "1k-9k")
+        .when((col("Installs") >= 10000) & (col("Installs") < 100000), "10k-99k")
+        .when((col("Installs") >= 100000) & (col("Installs") < 1000000), "100k-999k")
+        .when((col("Installs") >= 1000000) & (col("Installs") < 10000000), "1M-9M")
+        .otherwise("10M+")
+    )
+
     
+    InstallGroupsRating = InstallGroups.groupBy("InstallGroup") \
+        .agg(
+            avg("Rating").alias("AverageRating"),
+            count("*").alias("AppCount")
+        ) \
+        .orderBy("InstallGroup")  
+
+    fileout_4 = f"{fileout}/results_4"
+    InstallGroupsRating.write.option("header", True).option("delimiter", ",").csv(fileout_4)
+
+    #stop
     spark.stop()
+
+    
