@@ -2,6 +2,8 @@ from __future__ import print_function
 
 import sys
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, regexp_replace
+from pyspark.sql.types import IntegerType, FloatType
 
 # Columns of the CSV file
 # App Name,App Id,Category,Rating,Rating Count,Installs,Minimum Installs,Maximum Installs,Free,Price,Currency,
@@ -10,29 +12,55 @@ from pyspark.sql import SparkSession
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print("Usage: PaidAppsRatings.py <filein> <fileout>", file=sys.stderr)
+        print("Usage: PaidAppsRatings.py <filein> <fileout_topCategories> <fileout_topPaidAppsCategories> <fileout_paidAppsRatings>", file=sys.stderr)
         sys.exit(-1)
 
     filein = sys.argv[1]
     fileout = sys.argv[2]
-    
-    # Example:
-    # in pyspark shell start with:
-    #   filein = "hdfs://cm:9000/uhadoop/shared/imdb/imdb-ratings-two.tsv"
-    #   fileout = "hdfs://cm:9000/uhadoop2023/<user>/series-avg-two-py/"
-    # and continue line-by-line from here
 
     spark = SparkSession.builder.appName("PaidAppsRatings").getOrCreate()
 
-    df = spark.read.options(delimiter=",", header=True).csv(filein)
+    # Se lee el csv y se convierte a dataframe
 
-    # Here we filter the lines to only include those that have a valid App Name and Rating and are marked as not free
+    df = spark.read.options(delimiter=",", header=True, inferSchema=False).csv(filein)
+
+    # Se procesa la columna "Installs"
+
+    df = df.withColumn("Installs", regexp_replace(col("Installs"), "[+,]", ""))
+    df = df.withColumn("Installs", col("Installs").cast(IntegerType()))
+
+    # ¿Cuáles son las categorías de aplicaciones más populares en la Play Store?
+
+    topApps = df.filter(df.App_Name != 'null')
+
+    TopAppsCategory = topApps.select(topApps.App_Name, topApps.Category, topApps.Installs)
+
+    TopAppsCategory = TopAppsCategory.groupBy("Category").agg({"Installs": "sum"}).withColumnRenamed("sum(Installs)", "Total_Installs")
+    TopAppsCategory = TopAppsCategory.orderBy(col("Total_Installs").desc())
+
+    fileout_1 = f"{fileout}/results_1"
+
+    TopAppsCategory.write.option("header", True).option("delimiter", ",").csv(fileout_1)
+
+    # ¿Qué tipo de aplicaciones de pago obtienen más descargas?
+
     paidApps = df.filter((df.App_Name != 'null') & (df.Rating != 'null') & (df.Free == "False"))
 
-    # We create a new Dataframe where each element is a tuple of (App Name, Rating, Rating Count, Free)
+    TopPaidAppsCategory = paidApps.select(paidApps.App_Name, paidApps.Category, paidApps.Installs)
 
-    PaidAppsRating = paidApps.select(paidApps.App_Name, paidApps.Rating, paidApps.Rating_Count, paidApps.Free)
+    TopPaidAppsCategory = TopPaidAppsCategory.groupBy("Category").agg({"Installs": "sum"}).withColumnRenamed("sum(Installs)", "Total_Installs")
+    TopPaidAppsCategory= TopPaidAppsCategory.orderBy(col("Total_Installs").desc())
 
-    PaidAppsRating.write.option("header", True).option("delimiter", ",").csv(fileout)
+    fileout_2 = f"{fileout}/results_2"
 
+    TopPaidAppsCategory.write.option("header", True).option("delimiter", ",").csv(fileout_2)
+
+    # ¿Qué correlación existe entre las calificaciones de las aplicaciones de pago y su cantidad de descargas?
+
+    PaidAppsRating = paidApps.select(paidApps.Rating.cast(FloatType()), paidApps.Installs)
+
+    fileout_3 = f"{fileout}/results_3"
+
+    PaidAppsRating.write.option("header", True).option("delimiter", ",").csv(fileout_3)
+    
     spark.stop()
