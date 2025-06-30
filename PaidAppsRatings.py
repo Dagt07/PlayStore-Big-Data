@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import sys
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, regexp_replace
+from pyspark.sql.functions import col, regexp_replace, avg, count, when
 from pyspark.sql.types import IntegerType, FloatType
 
 # Columns of the CSV file
