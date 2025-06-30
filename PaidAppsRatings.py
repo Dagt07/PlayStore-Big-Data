@@ -64,8 +64,7 @@ if __name__ == "__main__":
     PaidAppsRating.write.option("header", True).option("delimiter", ",").csv(fileout_3)
 
     # Promedio de Rating para distintos rangos
-    InstallGroups = df.withColumn(
-        "InstallGroup",
+    InstallGroups = df.withColumn("InstallGroup",
         when(col("Installs") < 100, "<100")
         .when((col("Installs") >= 100) & (col("Installs") < 1000), "100-999")
         .when((col("Installs") >= 1000) & (col("Installs") < 10000), "1k-9k")
@@ -76,12 +75,7 @@ if __name__ == "__main__":
     )
 
     
-    InstallGroupsRating = InstallGroups.groupBy("InstallGroup") \
-        .agg(
-            avg("Rating").alias("AverageRating"),
-            count("*").alias("AppCount")
-        ) \
-        .orderBy("InstallGroup")  
+    InstallGroupsRating = InstallGroups.groupBy("InstallGroup").agg(avg("Rating").alias("AverageRating"),count("*").alias("AppCount")).orderBy("InstallGroup")  
 
     fileout_4 = f"{fileout}/results_4"
     InstallGroupsRating.write.option("header", True).option("delimiter", ",").csv(fileout_4)
